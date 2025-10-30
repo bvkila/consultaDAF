@@ -1,6 +1,9 @@
 import os
 import time
 import shutil
+import json
+from credenciais import *
+from office365.sharepoint.client_context import ClientContext
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from datetime import datetime, timedelta
@@ -44,6 +47,8 @@ def renomear_arquivo(caminho_antigo, novo_nome):
     novo_caminho = os.path.join(diretorio, novo_nome)
     shutil.move(caminho_antigo, novo_caminho)
 
+    return novo_caminho
+
 def baixar_daf(data_inicial, data_final):
     '''
     baixa o demonstrativo de arrecadação federal baseado nas datas inicial e final
@@ -83,6 +88,38 @@ def baixar_daf(data_inicial, data_final):
     clicar('//*[@id="__next"]/div[3]/div/div/div/div/apw-ng-app/app-template/bb-layout/div[1]/div/div/div/div/bb-layout-column/ng-component/div/div/div/app-demonstrativo-daf-final/div/div[2]/div/div/bb-card/bb-card-header/bb-card-header-action/button/bb-icon')
     # Setar a extensão do arquivo
     clicar('//*[contains(text(), "PDF")]')
+
+def autenticar():
+    '''
+    abre o json carregado com os cookies e seleciona os cookies necessarios
+    '''
+    with open("./storage_state.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
+    cookies = {}
+    
+    for c in data.get("cookies", []):
+        name = c.get("name")
+        if name in {"FedAuth", "rtFa", "SPOIDCRL"}:
+            cookies[name] = c.get("value", "")
+    
+    return cookies
+
+def upload(pasta_sharepoint, caminho_local):
+    '''
+    faz o upload do arquivo no caminho_local para a pasta_sharepoint
+    '''
+    file_name = os.path.basename(caminho_local)
+    
+    try:
+        
+        target_folder = ctx.web.get_folder_by_server_relative_url(pasta_sharepoint)
+        
+        with open(caminho_local, "rb") as f:
+            target_folder.files.upload(f, file_name).execute_query()
+        print(f"Documento '{file_name}' foi carregado com sucesso!")
+   
+    except Exception as e:
+        print(f"Error uploading file: {e}")
 # -----------------------------------------------
 
 #parâmetros
@@ -113,13 +150,19 @@ mes = datetime.now().month
 #baixa e ronomeia o DAF do mês atual
 baixar_daf(f'01/{mes:02d}/{ano}', f'{dia:02d}/{mes:02d}/{ano}')
 
+#conecta-se ao sharepoint
+ctx = ClientContext(url_sharepoint).with_cookies(autenticar)
+web = ctx.web.get().execute_query()
+
 #para csv
 aguardar_arquivo(caminho_arquivo_csv)
-renomear_arquivo(caminho_arquivo_csv, f"DAF - {ano}.{mes:02d}.csv")
+novo_caminho_arquivo_csv = renomear_arquivo(caminho_arquivo_csv, f"DAF - {ano}.{mes:02d}.csv")
+upload(caminho_pasta_csv_sharepoint, novo_caminho_arquivo_csv)
 
 #para pdf
 aguardar_arquivo(caminho_arquivo_pdf)
-renomear_arquivo(caminho_arquivo_pdf, f"DAF - {ano}.{mes:02d}.pdf")
+novo_caminho_arquivo_pdf = renomear_arquivo(caminho_arquivo_pdf, f"DAF - {ano}.{mes:02d}.pdf")
+upload(caminho_pasta_pdf_sharepoint, novo_caminho_arquivo_pdf)
 
 #verifica se o dia atual é menor ou igual a 3
 if dia <= 3:
@@ -133,12 +176,13 @@ if dia <= 3:
     
     #para csv
     aguardar_arquivo(caminho_arquivo_csv)
-    renomear_arquivo(caminho_arquivo_csv, f"DAF - {ano}.{mes:02d}.csv")
+    novo_caminho_arquivo_csv = renomear_arquivo(caminho_arquivo_csv, f"DAF - {ano}.{mes:02d}.csv")
+    upload(caminho_pasta_csv_sharepoint, novo_caminho_arquivo_csv)
     
     #para pdf
     aguardar_arquivo(caminho_arquivo_pdf)
-    renomear_arquivo(caminho_arquivo_pdf, f"DAF - {ano}.{mes:02d}.pdf")
+    novo_caminho_arquivo_pdf = renomear_arquivo(caminho_arquivo_pdf, f"DAF - {ano}.{mes:02d}.pdf")
+    upload(caminho_pasta_pdf_sharepoint, novo_caminho_arquivo_pdf)
 
 #finaliza o navegador
 driver.quit()
-# -----------------------------------------------
