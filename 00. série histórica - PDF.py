@@ -11,8 +11,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # -----------------------------------------------
-user = os.getlogin()
 
+user = os.getlogin()
 caminho_arquivo = fr'C:\Users\{user}\Downloads\demonstrativo-daf.pdf'
 
 service = Service()

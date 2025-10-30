@@ -11,10 +11,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # -----------------------------------------------
-SHAREPOINT_URL = 'https://sefazrj.sharepoint.com/sites/SUBTES/Shared%20Documents/Forms/AllItems.aspx?id=%2Fsites%2FSUBTES%2FShared%20Documents%2FSUPCONC%2F6%20%2D%20Apoio%20Automa%C3%A7%C3%B5es%2F02%20%2D%20Demonstrativos%20DAF%2FCSV&viewid=5d6b1a4e%2D8ada%2D4393%2Dacee%2Da0e4ca8ddd07'
 
 user = os.getlogin()
-
 caminho_arquivo = fr'C:\Users\{user}\Downloads\demonstrativoDAF.csv'
 
 service = Service()
