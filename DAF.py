@@ -147,6 +147,18 @@ mes = datetime.now().month
 #execução
 # -----------------------------------------------
 
+#excluir arquivos antigos; CSV
+try:
+    os.remove(caminho_arquivo_csv)
+except:
+    pass
+
+#excluir arquivos antigos; PDF
+try:
+    os.remove(caminho_arquivo_pdf)
+except:
+    pass
+
 #baixa e ronomeia o DAF do mês atual
 baixar_daf(f'01/{mes:02d}/{ano}', f'{dia:02d}/{mes:02d}/{ano}')
 
@@ -170,6 +182,14 @@ if dia <= 3:
     ultimo_dia = datetime.now().replace(day=1) - timedelta(days=1)
     dia = ultimo_dia.day
     mes = datetime.now().month - 1
+
+    #excluir arquivos antigos
+    try:
+        os.remove(caminho_arquivo_csv)
+        os.remove(caminho_arquivo_pdf)
+
+    except:
+        pass
 
     #baixa e ronomeia o DAF do mês anterior
     baixar_daf(f'01/{mes:02d}/{ano}', f'{dia:02d}/{mes:02d}/{ano}')
