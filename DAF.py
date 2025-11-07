@@ -183,11 +183,15 @@ if dia <= 3:
     dia = ultimo_dia.day
     mes = datetime.now().month - 1
 
-    #excluir arquivos antigos
+    #excluir arquivos antigos; CSV
     try:
         os.remove(caminho_arquivo_csv)
-        os.remove(caminho_arquivo_pdf)
+    except:
+        pass
 
+    #excluir arquivos antigos; PDF
+    try:
+        os.remove(caminho_arquivo_pdf)
     except:
         pass
 
