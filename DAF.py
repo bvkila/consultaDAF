@@ -168,18 +168,43 @@ def tratar_dados(caminho_arquivo):
     # organizar colunas e resetar index
     df = df[['fundo', 'data', 'parcela', 'valor', 'tipo']].reset_index(drop=True)
 
+    # constantes definidas apenas enquanto não é definido um banco de dados
+    NOME_TABELA = 'base_dados' # mudar isso aqui futuramente
+
+    #conexão temporária
     con = sqlite3.connect('base_dados.db')
     cursor = con.cursor()
 
-    query = """
-        INSERT OR IGNORE INTO base_dados (fundo, data, parcela, valor, tipo) 
-        VALUES (?, ?, ?, ?, ?);
-    """
+    # transforma a consulta em um dataframe
+    base = pd.read_sql_query(f'''
+    SELECT * FROM {NOME_TABELA}
+    ''', con)
 
+    #verifica se cada row já está no banco de dados
     for index, row in df.iterrows():
-        cursor.execute(query, (row['fundo'], row['data'], row['parcela'], row['valor'], row['tipo']))
 
-    return df
+        #cria uma conferência de duplicidade
+        conferencia_duplicidade = base[(base['fundo'] == row['fundo'])&
+                                (base['data'] == row['data'])&
+                                (base['parcela'] == row['parcela'])&
+                                (base['valor'] == row['valor'])&
+                                (base['tipo'] == row['tipo'])]
+
+        #se já existir, nao inserir novamente
+        if not conferencia_duplicidade.empty:
+            continue
+
+        #se não existir, inserir no banco de dado
+        else:
+
+            cursor.execute(f'''
+            INSERT INTO {NOME_TABELA} (fundo, data, parcela, valor, tipo)
+            VALUES (?, ?, ?, ?, ?)
+            ''', [row['fundo'], row['data'], row['parcela'], row['valor'], row['tipo']])
+            con.commit()  # precisa dar o commit para salvar as alterações
+                    
+    con.close()
+    print("Info", "Documentos processados com sucesso!")
 
 ########## parâmetros
 
