@@ -1,15 +1,17 @@
 import os
 import time
-import shutil
 import json
+import shutil
+import sys
 from credenciais import *
-from office365.sharepoint.client_context import ClientContext
 from selenium import webdriver
-from selenium.webdriver.common.by import By
+from tkinter import messagebox
 from datetime import datetime, timedelta
+from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
+from office365.sharepoint.client_context import ClientContext
 from selenium.webdriver.support import expected_conditions as EC
 
 ########## funções
@@ -206,11 +208,61 @@ def tratar_dados(caminho_arquivo):
     con.close()
     print("Info", "Documentos processados com sucesso!")
 
+def excluir_arquivo(caminho_arquivo):
+    if os.path.exists(caminho_arquivo):
+        os.remove(caminho_arquivo)
+
+def coletar_cookies():
+
+    from playwright.sync_api import sync_playwright
+ 
+    site_url = url_sharepoint
+    storage_state_path = "./storage_state.json"
+
+    try:
+    
+        with sync_playwright() as p:
+            browser = p.chromium.launch(channel='msedge', headless=False)
+            context = browser.new_context()
+            page = context.new_page()
+            page.goto(site_url)
+            
+            # esperar pela conexão entrar em idle
+            page.wait_for_load_state("networkidle")
+
+            print("\nFaça o login no SharePoint e aguarde...")
+            input("Quando a página estiver completamente carregada e autorizada, aperte Enter no terminal para continuar...")
+
+            # guardar os cookies
+            context.storage_state(path=storage_state_path)
+            print(f"Saved Playwright storage state to: {storage_state_path}")
+
+            context.close()
+            browser.close()
+            
+            global ctx, web
+
+            ctx = ClientContext(url_sharepoint).with_cookies(autenticar)
+            web = ctx.web.get().execute_query()
+    
+    except Exception as e:
+        messagebox.showerror("Erro", f"Ocorreu algum erro ao se conectar ao Sharepoint: {e}")
+        sys.exit()
+
+
 ########## parâmetros
 
 #define o caminho do arquivo baixado
 caminho_arquivo_csv = fr'C:\Users\{os.getlogin()}\Downloads\demonstrativoDAF.csv'
 caminho_arquivo_pdf = fr'C:\Users\{os.getlogin()}\Downloads\demonstrativo-daf.pdf'
+
+try:
+    #conecta-se ao sharepoint
+    ctx = ClientContext(url_sharepoint).with_cookies(autenticar)
+    web = ctx.web.get().execute_query()
+
+except Exception as e:
+    coletar_cookies()
 
 #configurações iniciais do Edge
 service = Service()
@@ -229,68 +281,64 @@ mes = datetime.now().month
 
 ########## execução
 
-#excluir arquivos antigos; CSV
+
 try:
-    os.remove(caminho_arquivo_csv)
-except:
-    pass
+    #limpa os arquivos antigos, caso existam
+    excluir_arquivo(caminho_arquivo_csv)
+    excluir_arquivo(caminho_arquivo_pdf)
 
-#excluir arquivos antigos; PDF
-try:
-    os.remove(caminho_arquivo_pdf)
-except:
-    pass
-
-#baixa e ronomeia o DAF do mês atual
-baixar_daf(f'01/{mes:02d}/{ano}', f'{dia:02d}/{mes:02d}/{ano}')
-
-#conecta-se ao sharepoint
-ctx = ClientContext(url_sharepoint).with_cookies(autenticar)
-web = ctx.web.get().execute_query()
-
-#para csv
-aguardar_arquivo(caminho_arquivo_csv)
-novo_caminho_arquivo_csv = renomear_arquivo(caminho_arquivo_csv, f"DAF - {ano}.{mes:02d}.csv")
-tratar_dados(novo_caminho_arquivo_csv)
-upload(caminho_pasta_csv_sharepoint, novo_caminho_arquivo_csv)
-
-#para pdf
-aguardar_arquivo(caminho_arquivo_pdf)
-novo_caminho_arquivo_pdf = renomear_arquivo(caminho_arquivo_pdf, f"DAF - {ano}.{mes:02d}.pdf")
-upload(caminho_pasta_pdf_sharepoint, novo_caminho_arquivo_pdf)
-
-#verifica se o dia atual é menor ou igual a 3
-if dia <= 3:
-    #define as datas a serem usadas caso o dia atual seja menor ou igual a 3
-    ultimo_dia = datetime.now().replace(day=1) - timedelta(days=1)
-    dia = ultimo_dia.day
-    mes = datetime.now().month - 1
-
-    #excluir arquivos antigos; CSV
-    try:
-        os.remove(caminho_arquivo_csv)
-    except:
-        pass
-
-    #excluir arquivos antigos; PDF
-    try:
-        os.remove(caminho_arquivo_pdf)
-    except:
-        pass
-
-    #baixa e ronomeia o DAF do mês anterior
+    #baixa e ronomeia o DAF do mês atual, em CVS e PDF
     baixar_daf(f'01/{mes:02d}/{ano}', f'{dia:02d}/{mes:02d}/{ano}')
-    
+
+
     #para csv
     aguardar_arquivo(caminho_arquivo_csv)
     novo_caminho_arquivo_csv = renomear_arquivo(caminho_arquivo_csv, f"DAF - {ano}.{mes:02d}.csv")
-    tratar_dados(novo_caminho_arquivo_csv)
+    tratar_dados(novo_caminho_arquivo_csv) # para csv, coloca-se os dados no banco
     upload(caminho_pasta_csv_sharepoint, novo_caminho_arquivo_csv)
-    
+
     #para pdf
     aguardar_arquivo(caminho_arquivo_pdf)
     novo_caminho_arquivo_pdf = renomear_arquivo(caminho_arquivo_pdf, f"DAF - {ano}.{mes:02d}.pdf")
     upload(caminho_pasta_pdf_sharepoint, novo_caminho_arquivo_pdf)
+
+except Exception as e:
+    driver.quit()
+    messagebox.showerror("Error", f"Ocorreu algum erro ao baixar o DAF do mês corrente: {e}")
+    sys.exit()
+
+#verifica se o dia atual é menor ou igual a 3
+if dia <= 3:
+
+    try:
+
+        #define as datas a serem usadas caso o dia atual seja menor ou igual a 3
+        ultimo_dia = datetime.now().replace(day=1) - timedelta(days=1)
+        dia = ultimo_dia.day
+        mes = datetime.now().month - 1
+
+        #excluir arquivos antigos; CSV
+        excluir_arquivo(caminho_arquivo_csv)
+        excluir_arquivo(caminho_arquivo_pdf)
+
+        #baixa e ronomeia o DAF do mês anterior
+        baixar_daf(f'01/{mes:02d}/{ano}', f'{dia:02d}/{mes:02d}/{ano}')
+        
+        #para csv
+        aguardar_arquivo(caminho_arquivo_csv)
+        novo_caminho_arquivo_csv = renomear_arquivo(caminho_arquivo_csv, f"DAF - {ano}.{mes:02d}.csv")
+        tratar_dados(novo_caminho_arquivo_csv)
+        upload(caminho_pasta_csv_sharepoint, novo_caminho_arquivo_csv)
+        
+        #para pdf
+        aguardar_arquivo(caminho_arquivo_pdf)
+        novo_caminho_arquivo_pdf = renomear_arquivo(caminho_arquivo_pdf, f"DAF - {ano}.{mes:02d}.pdf")
+        upload(caminho_pasta_pdf_sharepoint, novo_caminho_arquivo_pdf)
+    
+    except Exception as e:
+        driver.quit()
+        messagebox.showerror("Error", f"Ocorreu algum erro ao baixar o DAF do mês anterior: {e}")
+        sys.exit()
 
 #finaliza o navegador
 driver.quit()
