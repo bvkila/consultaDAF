@@ -37,7 +37,7 @@ class Database:
 
     def obter_operacoes(self):
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM externos ORDER BY id DESC")
+        cursor.execute("SELECT id, subcategoria, valor, data FROM externos ORDER BY id DESC LIMIT 30")
         return cursor.fetchall()
 
     def atualizar_operacao(self, id_op, novo_valor, nova_data):
