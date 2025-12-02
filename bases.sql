@@ -1,4 +1,4 @@
-CREATE TABLE "teste_DAF_observacao" (
+CREATE TABLE IF NOT EXISTS contabilizacoes (
 	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
 	"data" TEXT NOT NULL,
 	"valor" REAL NOT NULL,
@@ -11,12 +11,20 @@ CREATE TABLE "teste_DAF_observacao" (
 )
 ;
 
-CREATE TABLE "base_dados" (
+CREATE TABLE IF NOT EXISTS DAF (
 	"id" INTEGER PRIMARY KEY AUTOINCREMENT,
 	"fundo" TEXT NOT NULL,
 	"data" TEXT NOT NULL,
 	"parcela" TEXT NOT NULL,
 	"valor" REAL NOT NULL,
 	"tipo" TEXT NOT NULL
+)
+;
+
+CREATE TABLE IF NOT EXISTS externos (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	subcategoria TEXT,
+	valor REAL,
+	data TEXT
 )
 ;
